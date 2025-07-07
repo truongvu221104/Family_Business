@@ -32,8 +32,6 @@ public partial class FamiContext : DbContext
 
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
-    public virtual DbSet<ProductUnit> ProductUnits { get; set; }
-
     public virtual DbSet<Supplier> Suppliers { get; set; }
 
     public virtual DbSet<Unit> Units { get; set; }
@@ -80,11 +78,11 @@ public partial class FamiContext : DbContext
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__A4AE64B80DB4CC77");
+            entity.HasKey(e => e.CustomerID).HasName("PK__Customer__A4AE64B80DB4CC77");
 
             entity.ToTable("Customer");
 
-            entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
+            entity.Property(e => e.CustomerID).HasColumnName("CustomerID");
             entity.Property(e => e.Name).HasMaxLength(100);
         });
 
@@ -224,29 +222,11 @@ public partial class FamiContext : DbContext
                 .HasForeignKey(d => d.BaseUnitId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Product__BaseUni__4BAC3F29");
+            entity.Property(e => e.CostPerUnit)
+          .HasColumnType("decimal(18,2)")
+          .HasDefaultValue(0);
         });
 
-        modelBuilder.Entity<ProductUnit>(entity =>
-        {
-            entity.HasKey(e => new { e.ProductId, e.UnitId }).HasName("PK__ProductU__F0439824EB728A3A");
-
-            entity.ToTable("ProductUnit");
-
-            entity.Property(e => e.ProductId).HasColumnName("ProductID");
-            entity.Property(e => e.UnitId).HasColumnName("UnitID");
-            entity.Property(e => e.CostPerUnit).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.FactorToBase).HasColumnType("decimal(18, 4)");
-
-            entity.HasOne(d => d.Product).WithMany(p => p.ProductUnits)
-                .HasForeignKey(d => d.ProductId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ProductUn__Produ__4F7CD00D");
-
-            entity.HasOne(d => d.Unit).WithMany(p => p.ProductUnits)
-                .HasForeignKey(d => d.UnitId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ProductUn__UnitI__5070F446");
-        });
 
         modelBuilder.Entity<Supplier>(entity =>
         {

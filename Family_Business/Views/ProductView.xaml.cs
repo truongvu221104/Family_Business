@@ -39,9 +39,9 @@ namespace Family_Business.Views
         {
             public int ProductId { get; set; }
             public string Name { get; set; } = string.Empty;
+            public int BaseUnitId { get; set; }
             public string BaseUnitName { get; set; } = string.Empty;
             public int CategoryID { get; set; }
-            public int BaseUnitId { get; set; }
             public string CategoryName { get; set; } = string.Empty;
             public decimal CostPerUnit { get; set; }
             public decimal RetailPrice { get; set; }
@@ -55,34 +55,26 @@ namespace Family_Business.Views
             var query = ctx.Products
                            .Include(p => p.BaseUnit)
                            .Include(p => p.Category)
-                           .Include(p => p.ProductUnits)
                            .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(p => p.Name.Contains(search));
 
             var list = query
-                .OrderBy(p => p.ProductId)
-                .ToList()
                 .Select(p => new ProductDisplay
                 {
                     ProductId = p.ProductId,
                     Name = p.Name,
-                    BaseUnitName = p.BaseUnit.UnitName,
-                    CategoryName = p.Category.CategoryName,
                     BaseUnitId = p.BaseUnitId,
+                    BaseUnitName = p.BaseUnit.UnitName,
                     CategoryID = p.CategoryID,
-                    CostPerUnit = p.ProductUnits
-                                        .FirstOrDefault(u => u.UnitId == p.BaseUnitId)?
-                                        .CostPerUnit ?? 0m,
-                    RetailPrice = (p.ProductUnits
-                                       .FirstOrDefault(u => u.UnitId == p.BaseUnitId)?
-                                       .CostPerUnit ?? 0m) * (1 + p.RetailMarkupPercent / 100m),
-                    WholesalePrice = (p.ProductUnits
-                                       .FirstOrDefault(u => u.UnitId == p.BaseUnitId)?
-                                       .CostPerUnit ?? 0m) * (1 + p.WholesaleMarkupPercent / 100m),
+                    CategoryName = p.Category.CategoryName,
+                    CostPerUnit = p.CostPerUnit,
+                    RetailPrice = p.CostPerUnit * (1 + p.RetailMarkupPercent / 100m),
+                    WholesalePrice = p.CostPerUnit * (1 + p.WholesaleMarkupPercent / 100m),
                     Note = p.Note ?? string.Empty
                 })
+                .OrderBy(d => d.ProductId)
                 .ToList();
 
             dgProducts.ItemsSource = list;
@@ -100,7 +92,6 @@ namespace Family_Business.Views
 
         private void BtnAdd_Click(object sender, RoutedEventArgs e)
         {
-            // Validate inputs
             if (string.IsNullOrWhiteSpace(txtName.Text)
                 || cbxUnit.SelectedItem is not Unit unit
                 || cbxCategory.SelectedItem is not ProductCategory cat
@@ -108,32 +99,23 @@ namespace Family_Business.Views
                 || !decimal.TryParse(txtRetailMarkup.Text, out var rm)
                 || !decimal.TryParse(txtWholesaleMarkup.Text, out var wm))
             {
-                MessageBox.Show("Vui lòng nhập đầy đủ và đúng định dạng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Vui lòng nhập đầy đủ và đúng định dạng.", "Lỗi",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             using var ctx = new FamiContext();
-            // Tạo product
             var prod = new Product
             {
                 Name = txtName.Text.Trim(),
                 BaseUnitId = unit.UnitId,
                 CategoryID = cat.CategoryID,
+                CostPerUnit = cost,
                 RetailMarkupPercent = rm,
                 WholesaleMarkupPercent = wm,
                 Note = txtNote.Text.Trim()
             };
             ctx.Products.Add(prod);
-            ctx.SaveChanges();
-
-            // Tạo đơn vị giá nhập
-            ctx.ProductUnits.Add(new ProductUnit
-            {
-                ProductId = prod.ProductId,
-                UnitId = unit.UnitId,
-                FactorToBase = 1m,
-                CostPerUnit = cost
-            });
             ctx.SaveChanges();
 
             ClearForm();
@@ -144,7 +126,8 @@ namespace Family_Business.Views
         {
             if (dgProducts.SelectedItem is not ProductDisplay row)
             {
-                MessageBox.Show("Chọn sản phẩm để sửa.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Chọn sản phẩm để sửa.", "Thông báo",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -155,28 +138,22 @@ namespace Family_Business.Views
                 || !decimal.TryParse(txtRetailMarkup.Text, out var rm)
                 || !decimal.TryParse(txtWholesaleMarkup.Text, out var wm))
             {
-                MessageBox.Show("Vui lòng nhập đầy đủ và đúng định dạng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Vui lòng nhập đầy đủ và đúng định dạng.", "Lỗi",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             using var ctx = new FamiContext();
-            var prod = ctx.Products
-                          .Include(p => p.ProductUnits)
-                          .FirstOrDefault(p => p.ProductId == row.ProductId);
+            var prod = ctx.Products.Find(row.ProductId);
             if (prod == null) return;
 
-            // Cập nhật product
             prod.Name = txtName.Text.Trim();
             prod.BaseUnitId = unit.UnitId;
             prod.CategoryID = cat.CategoryID;
+            prod.CostPerUnit = cost;
             prod.RetailMarkupPercent = rm;
             prod.WholesaleMarkupPercent = wm;
             prod.Note = txtNote.Text.Trim();
-            ctx.SaveChanges();
-
-            // Cập nhật giá nhập
-            var pu = prod.ProductUnits.FirstOrDefault(u => u.UnitId == prod.BaseUnitId);
-            if (pu != null) pu.CostPerUnit = cost;
             ctx.SaveChanges();
 
             ClearForm();
@@ -188,15 +165,11 @@ namespace Family_Business.Views
             if (dgProducts.SelectedItem is not ProductDisplay row) return;
 
             if (MessageBox.Show(
-                $"Bạn chắc chắn xóa sản phẩm: {row.Name}?",
-                "Xác nhận",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question) != MessageBoxResult.Yes)
+                $"Bạn chắc chắn xóa sản phẩm: {row.Name}?", "Xác nhận",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
                 return;
 
             using var ctx = new FamiContext();
-            ctx.ProductUnits.RemoveRange(
-                ctx.ProductUnits.Where(u => u.ProductId == row.ProductId));
             var prod = ctx.Products.Find(row.ProductId);
             if (prod != null)
             {
@@ -220,12 +193,9 @@ namespace Family_Business.Views
             {
                 txtName.Text = row.Name;
                 txtCostPerUnit.Text = row.CostPerUnit.ToString();
-                txtRetailMarkup.Text = ((row.RetailPrice / row.CostPerUnit - 1) * 100)
-                        .ToString("F2");
-                txtWholesaleMarkup.Text = ((row.WholesalePrice / row.CostPerUnit - 1) * 100)
-                                          .ToString("F2");
+                txtRetailMarkup.Text = ((row.RetailPrice / row.CostPerUnit - 1) * 100).ToString("F2");
+                txtWholesaleMarkup.Text = ((row.WholesalePrice / row.CostPerUnit - 1) * 100).ToString("F2");
                 txtNote.Text = row.Note;
-
                 cbxUnit.SelectedValue = row.BaseUnitId;
                 cbxCategory.SelectedValue = row.CategoryID;
             }
@@ -233,33 +203,6 @@ namespace Family_Business.Views
             {
                 ClearForm();
             }
-        }
-        private void BtnManageUnits_Click(object sender, RoutedEventArgs e)
-        {
-            var win = new Window
-            {
-                Title = "Quản lý Đơn vị",
-                Content = new UnitView(),
-                SizeToContent = SizeToContent.WidthAndHeight,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = Window.GetWindow(this)
-            };
-            win.ShowDialog();
-            LoadUnits();    // reload lại danh sách ĐVT
-        }
-
-        private void BtnManageCategories_Click(object sender, RoutedEventArgs e)
-        {
-            var win = new Window
-            {
-                Title = "Quản lý Loại sản phẩm",
-                Content = new ProductCategoryView(),
-                SizeToContent = SizeToContent.WidthAndHeight,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = Window.GetWindow(this)
-            };
-            win.ShowDialog();
-            LoadCategories();  // reload lại danh sách Loại SP
         }
 
         private void ClearForm()

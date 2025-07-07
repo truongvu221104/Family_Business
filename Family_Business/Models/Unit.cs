@@ -13,7 +13,5 @@ public partial class Unit
 
     public virtual ICollection<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
 
-    public virtual ICollection<ProductUnit> ProductUnits { get; set; } = new List<ProductUnit>();
-
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 }

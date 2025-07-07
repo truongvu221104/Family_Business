@@ -1,0 +1,60 @@
+﻿<UserControl x:Class="Family_Business.Views.SupplierView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="450" Width="500">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Search bar -->
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+            <Label Content="Tìm nhà cung cấp:" VerticalAlignment="Center"/>
+            <TextBox x:Name="txtSearch" Width="200" Margin="4,0"/>
+            <Button Content="Tìm" Click="BtnSearch_Click" Margin="8,0"/>
+            <Button Content="Tải lại" Click="BtnReload_Click" Margin="8,0"/>
+        </StackPanel>
+
+        <!-- DataGrid danh sách nhà cung cấp -->
+        <DataGrid x:Name="dgItems"
+              Grid.Row="1"
+              AutoGenerateColumns="False"
+              IsReadOnly="True"
+              SelectionMode="Single"
+              CanUserAddRows="False"
+              SelectionChanged="dgItems_SelectionChanged">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" Binding="{Binding SupplierID}" Width="60"/>
+                <DataGridTextColumn Header="Tên nhà cung cấp" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="Địa chỉ" Binding="{Binding Address}" Width="150"/>
+                <DataGridTextColumn Header="Điện thoại" Binding="{Binding Phone}" Width="120"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Form thêm/sửa -->
+        <GroupBox Header="Thêm / Sửa nhà cung cấp" Grid.Row="2" Margin="0,8,0,0">
+            <StackPanel Orientation="Vertical" Margin="4">
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <Label Content="Tên nhà cung cấp:" Width="120" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtName" Width="300"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <Label Content="Địa chỉ:" Width="120" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtAddress" Width="300"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <Label Content="Số điện thoại:" Width="120" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtPhone" Width="200"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8">
+                    <Button Content="Thêm" Click="BtnAdd_Click" Margin="4,0"/>
+                    <Button Content="Sửa" Click="BtnEdit_Click" Margin="4,0"/>
+                    <Button Content="Xóa" Click="BtnDelete_Click" Margin="4,0"/>
+                    <Button Content="Xóa chọn" Click="BtnClear_Click" Margin="4,0"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+    </Grid>
+</UserControl>
