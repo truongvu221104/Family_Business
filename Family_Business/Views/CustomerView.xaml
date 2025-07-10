@@ -11,9 +11,13 @@
 
         <!-- Search bar -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-            <Label Content="Tìm khách hàng:" VerticalAlignment="Center"/>
-            <TextBox x:Name="txtSearch" Width="200" Margin="4,0"/>
-            <Button Content="Tìm" Click="BtnSearch_Click" Margin="8,0"/>
+            <Label Content="Tìm (Tên / SĐT):" VerticalAlignment="Center"/>
+            <!-- Bật ngay TextChanged -->
+            <TextBox x:Name="txtSearch"
+             Width="200"
+             Margin="4,0"
+             TextChanged="TxtSearch_TextChanged"/>
+            <!-- Bạn có thể giữ hoặc ẩn nút Tìm và Tải lại -->
             <Button Content="Tải lại" Click="BtnReload_Click" Margin="8,0"/>
         </StackPanel>
 
@@ -29,7 +33,7 @@
                 <DataGridTextColumn Header="ID" Binding="{Binding CustomerID}" Width="60"/>
                 <DataGridTextColumn Header="Tên khách hàng" Binding="{Binding Name}" Width="*"/>
                 <DataGridTextColumn Header="Địa chỉ" Binding="{Binding Address}" Width="150"/>
-                <DataGridTextColumn Header="Điện thoại" Binding="{Binding Phone}" Width="120"/>
+                <DataGridTextColumn Header="Điện thoại" Binding="{Binding PhoneNumber}" Width="120"/>
             </DataGrid.Columns>
         </DataGrid>
 

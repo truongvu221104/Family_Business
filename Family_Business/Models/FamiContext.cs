@@ -84,6 +84,10 @@ public partial class FamiContext : DbContext
 
             entity.Property(e => e.CustomerID).HasColumnName("CustomerID");
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Address)
+          .HasMaxLength(200);
+            entity.Property(e => e.PhoneNumber)
+                  .HasMaxLength(20);
         });
 
         modelBuilder.Entity<InventoryTransaction>(entity =>
@@ -236,6 +240,10 @@ public partial class FamiContext : DbContext
 
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Address)
+          .HasMaxLength(200);
+            entity.Property(e => e.PhoneNumber)
+                  .HasMaxLength(20);
         });
 
         modelBuilder.Entity<Unit>(entity =>
