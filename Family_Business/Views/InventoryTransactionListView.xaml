@@ -1,0 +1,55 @@
+﻿<UserControl x:Class="Family_Business.Views.InventoryTransactionListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="500" d:DesignWidth="800">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Filters -->
+            <RowDefinition Height="*"/>
+            <!-- DataGrid -->
+        </Grid.RowDefinitions>
+
+        <!-- 1) Filter panel -->
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Loại:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <ComboBox x:Name="cbFilterType"
+                Width="120"
+                SelectionChanged="Filter_Changed"/>
+
+            <TextBlock Text="Sản phẩm:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+            <ComboBox x:Name="cbFilterProduct"
+                Width="200"
+                DisplayMemberPath="Name"
+                SelectionChanged="Filter_Changed"/>
+
+            <TextBlock Text="Từ ngày:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+            <DatePicker x:Name="dpFrom" Width="130" SelectedDateChanged="Filter_Changed"/>
+
+            <TextBlock Text="Đến ngày:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+            <DatePicker x:Name="dpTo"   Width="130" SelectedDateChanged="Filter_Changed"/>
+
+            <Button Content="Lọc" Width="60" Margin="10,0,0,0" Click="BtnFilter_Click"/>
+        </StackPanel>
+
+        <!-- 2) DataGrid -->
+        <DataGrid x:Name="dgTransactions"
+              Grid.Row="1"
+              AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Ngày"    Binding="{Binding TxDate, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Width="140"/>
+                <DataGridTextColumn Header="Loại"    Binding="{Binding TxType}"    Width="100"/>
+                <DataGridTextColumn Header="Sản phẩm"Binding="{Binding ProductName}" Width="200"/>
+                <DataGridTextColumn Header="Đơn vị"  Binding="{Binding UnitName}"   Width="80"/>
+                <DataGridTextColumn Header="Số lượng"Binding="{Binding Quantity, StringFormat={}{0:0}}" Width="80"/>
+                <DataGridTextColumn Header="Đối tác"  Binding="{Binding PartyName}"  Width="200"/>
+                <DataGridTextColumn Header="Ghi chú" Binding="{Binding Note}"       Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>
