@@ -14,7 +14,9 @@
         </Grid.RowDefinitions>
 
         <!-- 1) Filter panel -->
-        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,10">
+        <StackPanel Orientation="Horizontal"
+                Grid.Row="0"
+                Margin="0,0,0,10">
             <TextBlock Text="Loại:" VerticalAlignment="Center" Margin="0,0,5,0"/>
             <ComboBox x:Name="cbFilterType"
                 Width="120"
@@ -27,12 +29,19 @@
                 SelectionChanged="Filter_Changed"/>
 
             <TextBlock Text="Từ ngày:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-            <DatePicker x:Name="dpFrom" Width="130" SelectedDateChanged="Filter_Changed"/>
+            <DatePicker x:Name="dpFrom"
+                  Width="130"
+                  SelectedDateChanged="Filter_Changed"/>
 
             <TextBlock Text="Đến ngày:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-            <DatePicker x:Name="dpTo"   Width="130" SelectedDateChanged="Filter_Changed"/>
+            <DatePicker x:Name="dpTo"
+                  Width="130"
+                  SelectedDateChanged="Filter_Changed"/>
 
-            <Button Content="Lọc" Width="60" Margin="10,0,0,0" Click="BtnFilter_Click"/>
+            <Button Content="Lọc"
+              Width="60"
+              Margin="10,0,0,0"
+              Click="BtnFilter_Click"/>
         </StackPanel>
 
         <!-- 2) DataGrid -->
@@ -42,13 +51,27 @@
               CanUserAddRows="False"
               IsReadOnly="True">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Ngày"    Binding="{Binding TxDate, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Width="140"/>
-                <DataGridTextColumn Header="Loại"    Binding="{Binding TxType}"    Width="100"/>
-                <DataGridTextColumn Header="Sản phẩm"Binding="{Binding ProductName}" Width="200"/>
-                <DataGridTextColumn Header="Đơn vị"  Binding="{Binding UnitName}"   Width="80"/>
-                <DataGridTextColumn Header="Số lượng"Binding="{Binding Quantity, StringFormat={}{0:0}}" Width="80"/>
-                <DataGridTextColumn Header="Đối tác"  Binding="{Binding PartyName}"  Width="200"/>
-                <DataGridTextColumn Header="Ghi chú" Binding="{Binding Note}"       Width="*"/>
+                <DataGridTextColumn Header="Ngày"
+                            Binding="{Binding TxDate, StringFormat={}{0:dd/MM/yyyy HH:mm}}"
+                            Width="140"/>
+                <DataGridTextColumn Header="Loại"
+                            Binding="{Binding TxType}"
+                            Width="100"/>
+                <DataGridTextColumn Header="Sản phẩm"
+                            Binding="{Binding ProductName}"
+                            Width="200"/>
+                <DataGridTextColumn Header="Đơn vị"
+                            Binding="{Binding UnitName}"
+                            Width="80"/>
+                <DataGridTextColumn Header="Số lượng"
+                            Binding="{Binding Quantity, StringFormat={}{0:0}}"
+                            Width="80"/>
+                <DataGridTextColumn Header="Đối tác"
+                            Binding="{Binding PartyName}"
+                            Width="200"/>
+                <DataGridTextColumn Header="Ghi chú"
+                            Binding="{Binding Note}"
+                            Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

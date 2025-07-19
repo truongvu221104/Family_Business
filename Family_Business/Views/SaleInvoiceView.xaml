@@ -3,23 +3,26 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="800">
+             mc:Ignorable="d" d:DesignHeight="200" d:DesignWidth="500">
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- 0: Header -->
-            <RowDefinition Height="*"/>
-            <!-- 1: DataGrid -->
             <RowDefinition Height="Auto"/>
-            <!-- 2: Form thêm dòng -->
-            <RowDefinition Height="Auto"/>
-            <!-- 3: Tổng & nút -->
         </Grid.RowDefinitions>
 
-        <!-- 0) Header: khách hàng & ngày -->
+        <!-- 0) Chọn khách hàng, ngày hóa đơn, ngày đáo hạn -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,10">
             <TextBlock Text="Khách hàng:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <ComboBox x:Name="cbCustomer" Width="200" DisplayMemberPath="Name"/>
+            <ComboBox x:Name="cbCustomer"
+                      Width="250"
+                      DisplayMemberPath="Name"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"
+                      StaysOpenOnEdit="True"/>
+            <Button Content="Thêm KH mới"
+                    Margin="5,0,0,0"
+                    Click="BtnAddCustomer_Click"
+                    VerticalAlignment="Center"/>
 
             <TextBlock Text="Ngày HĐ:" Margin="10,0,5,0" VerticalAlignment="Center"/>
             <DatePicker x:Name="dpInvoiceDate" Width="130"/>
@@ -28,62 +31,10 @@
             <DatePicker x:Name="dpDueDate" Width="130"/>
         </StackPanel>
 
-        <!-- 1) DataGrid hiển thị các dòng -->
-        <DataGrid x:Name="dgLines"
-              Grid.Row="1"
-              AutoGenerateColumns="False"
-              CanUserAddRows="False"
-              Margin="0,0,0,10">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Sản phẩm"
-                            Binding="{Binding Product.Name}"
-                            Width="200"/>
-                <DataGridTextColumn Header="Đơn vị"
-                            Binding="{Binding Product.BaseUnit.UnitName}"
-                            Width="100"/>
-                <DataGridTextColumn Header="SL"
-                            Binding="{Binding Quantity, StringFormat={}{0:0}}"
-                            Width="60"/>
-                <DataGridTextColumn Header="Đơn giá"
-                            Binding="{Binding UnitPrice, StringFormat={}{0:N2}}"
-                            Width="100"/>
-                <DataGridTextColumn Header="Thành tiền"
-                            Binding="{Binding Total, StringFormat={}{0:N2}}"
-                            Width="120"/>
-            </DataGrid.Columns>
-        </DataGrid>
-
-        <!-- 2) Form thêm dòng -->
-        <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,10">
-            <ComboBox x:Name="cbLineProduct"
-                Width="200"
-                DisplayMemberPath="Name"
-                SelectionChanged="CbLineProduct_SelectionChanged"/>
-
-            <TextBox x:Name="tbLineQuantity"
-               Width="60"
-               Margin="5,0"
-               TextChanged="TbLineQuantity_TextChanged"
-               TextAlignment="Right"/>
-
-            <TextBlock Text="Đơn giá:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-            <TextBlock x:Name="lblUnitPrice" Width="100" TextAlignment="Right"/>
-
-            <TextBlock Text="Thành tiền:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-            <TextBlock x:Name="lblLineTotal" Width="120" TextAlignment="Right"/>
-
-            <Button Content="Thêm"
-              Width="60"
-              Margin="5,0,0,0"
-              Click="BtnAddLine_Click"/>
-        </StackPanel>
-
-        <!-- 3) Tổng & nút Lưu / Xóa form -->
+        <!-- 1) Nút Lưu / Xóa form -->
         <StackPanel Orientation="Horizontal"
-                Grid.Row="3"
-                HorizontalAlignment="Right">
-            <TextBlock Text="Tổng:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
-            <TextBlock x:Name="lblInvoiceTotal" Width="120" TextAlignment="Right" FontWeight="Bold" Margin="0,0,10,0"/>
+                    Grid.Row="1"
+                    HorizontalAlignment="Right">
             <Button Content="Lưu HĐ" Width="100" Click="BtnSaveInvoice_Click"/>
             <Button Content="Xóa form" Width="100" Margin="5,0,0,0" Click="BtnClearInvoice_Click"/>
         </StackPanel>

@@ -25,7 +25,7 @@ namespace Family_Business.Views
                                      .ToList();
             cbxUnit.SelectedIndex = 0;
         }
-
+        
         private void LoadCategories()
         {
             using var ctx = new FamiContext();
@@ -215,6 +215,11 @@ namespace Family_Business.Views
             txtNote.Clear();
             cbxUnit.SelectedIndex = 0;
             cbxCategory.SelectedIndex = 0;
+        }
+
+        private void cbxUnit_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
         }
     }
 }
