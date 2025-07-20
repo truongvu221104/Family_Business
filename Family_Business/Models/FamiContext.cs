@@ -88,6 +88,9 @@ public partial class FamiContext : DbContext
           .HasMaxLength(200);
             entity.Property(e => e.PhoneNumber)
                   .HasMaxLength(20);
+            entity.Property(e => e.Balance)
+              .HasColumnType("decimal(18,2)")
+              .HasDefaultValue(0m);
         });
 
         modelBuilder.Entity<InventoryTransaction>(entity =>
@@ -244,6 +247,9 @@ public partial class FamiContext : DbContext
           .HasMaxLength(200);
             entity.Property(e => e.PhoneNumber)
                   .HasMaxLength(20);
+            entity.Property(e => e.OutstandingPayable)
+              .HasColumnType("decimal(18,2)")
+              .HasDefaultValue(0m);
         });
 
         modelBuilder.Entity<Unit>(entity =>

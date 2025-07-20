@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using Family_Business.Models;
+using Family_Business.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace Family_Business.Views
@@ -13,17 +14,22 @@ namespace Family_Business.Views
         private readonly FamiContext _ctx = new();
         private readonly CollectionViewSource _customerView;
         private readonly CollectionViewSource _productView;
+        private readonly NewInvoiceViewModel _vm;
 
         public NewInvoiceView()
         {
             InitializeComponent();
 
-            // 1) Thiết lập filter khách
+            // 1) Tạo & gán ViewModel
+            _vm = new NewInvoiceViewModel();
+            DataContext = _vm;
+
+            // 2) Khởi tạo filter Khách
             _customerView = new CollectionViewSource { Source = _ctx.Customers.ToList() };
             _customerView.Filter += CustomerFilter;
             cbCustomer.ItemsSource = _customerView.View;
 
-            // 2) Thiết lập filter sản phẩm
+            // 3) Khởi tạo filter Sản phẩm
             _productView = new CollectionViewSource
             {
                 Source = _ctx.Products.Include(p => p.BaseUnit).ToList()
@@ -31,177 +37,204 @@ namespace Family_Business.Views
             _productView.Filter += ProductFilter;
             cbProduct.ItemsSource = _productView.View;
 
-            // 3) Đăng ký sự kiện nhập đơn giá, số lượng sau khi khởi tạo control
-            tbUnitPrice.TextChanged += TbLineInput_TextChanged;
-            tbQuantity.TextChanged += TbLineInput_TextChanged;
-
-            // 4) Khởi tạo mặc định
-            tbQuantity.Text = "1";
-            tbUnitPrice.Text = "0";
-            lblLineTotal.Text = "";
-            tbPaid.Text = "";
-            lblStatus.Text = "";
+            // 4) Mặc định Quantity & Paid, rồi tính giá lẻ
+            _vm.Quantity = 1;
+            _vm.Paid = 0m;
+            // (UnitPrice sẽ được tính ngay khi chọn SP hoặc đổi loại bán)
         }
 
-        // Filter khách
+        // Filter Khách
         private void CustomerFilter(object sender, FilterEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtCustomerFilter.Text))
                 e.Accepted = true;
             else if (e.Item is Customer c)
-                e.Accepted = c.Name.IndexOf(txtCustomerFilter.Text, StringComparison.OrdinalIgnoreCase) >= 0;
+                e.Accepted = c.Name
+                    .IndexOf(txtCustomerFilter.Text, StringComparison.OrdinalIgnoreCase) >= 0;
             else
                 e.Accepted = false;
         }
+        private void TxtCustomerFilter_TextChanged(object sender, TextChangedEventArgs e)
+            => _customerView.View.Refresh();
 
-        // Filter sản phẩm
+        // Filter Sản phẩm
         private void ProductFilter(object sender, FilterEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtProductFilter.Text))
                 e.Accepted = true;
             else if (e.Item is Product p)
-                e.Accepted = p.Name.IndexOf(txtProductFilter.Text, StringComparison.OrdinalIgnoreCase) >= 0;
+                e.Accepted = p.Name
+                    .IndexOf(txtProductFilter.Text, StringComparison.OrdinalIgnoreCase) >= 0;
             else
                 e.Accepted = false;
         }
-
-        private void TxtCustomerFilter_TextChanged(object sender, TextChangedEventArgs e)
-            => _customerView.View.Refresh();
-
         private void TxtProductFilter_TextChanged(object sender, TextChangedEventArgs e)
             => _productView.View.Refresh();
 
-        // Khi chọn sản phẩm → hiển thị tên đơn vị
+        // Khi chọn SP: hiện Đơn vị và tính lại Đơn giá
         private void CbProduct_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (cbProduct.SelectedItem is Product prod)
             {
                 lblUnitName.Text = prod.BaseUnit.UnitName;
-                RecalculateLineTotal();
+                RecalculateUnitPrice(prod);
             }
             else
             {
                 lblUnitName.Text = "";
-                lblLineTotal.Text = "";
+                _vm.UnitPrice = 0m;
             }
         }
 
-        // Khi nhập đơn giá hoặc số lượng → tính thành tiền
-        private void TbLineInput_TextChanged(object sender, TextChangedEventArgs e)
-            => RecalculateLineTotal();
-
-        private void RecalculateLineTotal()
+        // Khi đổi Loại bán (Bán lẻ/Bán sỉ)
+        private void SaleModeChanged(object sender, RoutedEventArgs e)
         {
-            if (decimal.TryParse(tbUnitPrice.Text, out var unitPrice)
-                && int.TryParse(tbQuantity.Text, out var qty))
-            {
-                var total = unitPrice * qty;
-                lblLineTotal.Text = total.ToString("N2");
-
-                // Reset trạng thái trả tiền
-                lblStatus.Text = "";
-                tbPaid.Text = "";
-            }
-            else
-            {
-                lblLineTotal.Text = "";
-            }
+            if (cbProduct.SelectedItem is Product prod)
+                RecalculateUnitPrice(prod);
         }
 
-        // Khi nhập số tiền khách trả → hiển thị trạng thái
-        private void TbPaid_TextChanged(object sender, TextChangedEventArgs e)
+        // Tính và gán Giá theo loại bán
+        private void RecalculateUnitPrice(Product prod)
         {
-            if (decimal.TryParse(lblLineTotal.Text, out var total)
-                && decimal.TryParse(tbPaid.Text, out var paid))
-            {
-                lblStatus.Text = paid >= total
-                    ? "Đã thanh toán đủ"
-                    : $"Còn nợ: {(total - paid):N2}";
-            }
-            else
-            {
-                lblStatus.Text = "";
-            }
+            // Lấy giá gốc + markup
+            var cost = prod.CostPerUnit;
+            var pct = (rbWholesale.IsChecked == true)
+                         ? prod.WholesaleMarkupPercent
+                         : prod.RetailMarkupPercent;
+
+            _vm.UnitPrice = cost * (1 + pct / 100m);
         }
 
         // Lưu hóa đơn + chi tiết
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
+            // 1) Validate khách hàng
             if (!(cbCustomer.SelectedItem is Customer cust))
             {
-                MessageBox.Show("Vui lòng chọn khách hàng.", "Lỗi",
+                MessageBox.Show("Chọn khách hàng.", "Lỗi",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            // 2) Validate sản phẩm
+            if (!(cbProduct.SelectedItem is Product prod))
+            {
+                MessageBox.Show("Chọn sản phẩm.", "Lỗi",
                                 MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            if (!(cbProduct.SelectedItem is Product prod)
-                || !decimal.TryParse(tbUnitPrice.Text, out var unitPrice)
-                || !int.TryParse(tbQuantity.Text, out var qty))
+            // 3) Lấy dữ liệu từ VM
+            var qty = _vm.Quantity;
+            var unitPrice = _vm.UnitPrice;
+            var paid = _vm.Paid;
+            var total = _vm.Total;               // = qty * unitPrice
+            var now = DateTime.Now;
+            int currentUserId = 1; // hoặc từ session
+
+            using var tx = _ctx.Database.BeginTransaction();
+            try
             {
-                MessageBox.Show("Vui lòng chọn sản phẩm, nhập đơn giá và số lượng hợp lệ.", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                // 4) Tạo hóa đơn
+                var inv = new Invoice
+                {
+                    CustomerId = cust.CustomerID,
+                    InvoiceDate = _vm.InvoiceDateTime,
+                    DueDate = _vm.IsDebt ? _vm.DueDate : null,
+                    CreatedBy = currentUserId
+                };
+                _ctx.Invoices.Add(inv);
+                _ctx.SaveChanges(); // để có InvoiceID
+
+                // 5) Thêm detail
+                _ctx.InvoiceDetails.Add(new InvoiceDetail
+                {
+                    InvoiceId = inv.InvoiceId,
+                    ProductId = prod.ProductId,
+                    UnitId = prod.BaseUnitId,
+                    Quantity = qty,
+                    UnitPrice = unitPrice
+                });
+
+                // 6) Thêm payment nếu có
+                if (paid > 0)
+                {
+                    _ctx.Payments.Add(new Payment
+                    {
+                        InvoiceId = inv.InvoiceId,
+                        Amount = paid,
+                        PaymentDate = now,
+                        Type = "Thu",
+                        CreatedBy = currentUserId
+                    });
+                }
+
+                // 7) Ghi log
+                _ctx.AuditLogs.Add(new AuditLog
+                {
+                    UserId = currentUserId,
+                    Action = "Create Invoice",
+                    TableName = "Invoice",
+                    RecordId = inv.InvoiceId,
+                    ActionTime = now,
+                    Detail = $"Total={total:N2}; Paid={paid:N2}"
+                });
+
+                _ctx.SaveChanges();
+
+                // 8) Tính số còn nợ của chính hóa đơn này
+                decimal outstandingThisInvoice = total - paid;
+
+                // 9) Cộng dồn vào Balance cũ rồi lưu
+                cust.Balance += outstandingThisInvoice;
+                _ctx.SaveChanges();
+
+                tx.Commit();
+
+                MessageBox.Show(
+                    $"Hóa đơn #{inv.InvoiceId} đã lưu.\n" +
+                    $"Số còn nợ của khách ({cust.Name}): {cust.Balance:N2}",
+                    "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                ResetForm();
             }
-
-            if (!decimal.TryParse(tbPaid.Text, out var paid))
+            catch (Exception ex)
             {
-                MessageBox.Show("Vui lòng nhập số tiền khách trả.", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                tx.Rollback();
+                MessageBox.Show($"Lỗi khi lưu hóa đơn: {ex.Message}", "Lỗi",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            // 1) Tạo Invoice
-            var inv = new Invoice
-            {
-                CustomerId = cust.CustomerID,
-                InvoiceDate = DateTime.Today,
-                DueDate = DateTime.Today.AddDays(30),
-                CreatedBy = 1
-            };
-            _ctx.Invoices.Add(inv);
-            _ctx.SaveChanges();
-
-            // 2) Tạo InvoiceDetail
-            _ctx.InvoiceDetails.Add(new InvoiceDetail
-            {
-                InvoiceId = inv.InvoiceId,
-                ProductId = prod.ProductId,
-                UnitId = prod.BaseUnitId,
-                Quantity = qty,
-                UnitPrice = unitPrice
-            });
-            _ctx.SaveChanges();
-
-            // 3) Thông báo kết quả
-            var status = paid >= unitPrice * qty
-                ? "Đã thanh toán đủ."
-                : $"Còn nợ: {(unitPrice * qty - paid):N2}.";
-            MessageBox.Show(
-                $"Hoá đơn #{inv.InvoiceId} đã lưu.\n{status}",
-                "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
-
-            // 4) Reset form
-            txtCustomerFilter.Clear(); cbCustomer.SelectedIndex = -1;
-            txtProductFilter.Clear(); cbProduct.SelectedIndex = -1;
-            lblUnitName.Text = "";
-            tbUnitPrice.Text = "0";
-            tbQuantity.Text = "1";
-            lblLineTotal.Text = "";
-            tbPaid.Text = "";
-            lblStatus.Text = "";
         }
+
+
+        // Tách riêng phần reset để gọn
+        private void ResetForm()
+        {
+            txtCustomerFilter.Clear();
+            cbCustomer.SelectedIndex = -1;
+            txtProductFilter.Clear();
+            cbProduct.SelectedIndex = -1;
+            lblUnitName.Text = "";
+            rbRetail.IsChecked = true;
+            _vm.Quantity = 1;
+            _vm.Paid = 0m;
+            _vm.DueDate = null;
+            _vm.UnitPrice = 0m;
+            // InvoiceDateTime giữ mặc định lần mở form; nếu cần reset, có thể gán lại DateTime.Now
+        }
+
+
+
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
-            // Reset form
+            // Reset giống BtnSave_Click (chỉ khác không lưu)
             txtCustomerFilter.Clear(); cbCustomer.SelectedIndex = -1;
             txtProductFilter.Clear(); cbProduct.SelectedIndex = -1;
             lblUnitName.Text = "";
-            tbUnitPrice.Text = "0";
-            tbQuantity.Text = "1";
-            lblLineTotal.Text = "";
-            tbPaid.Text = "";
-            lblStatus.Text = "";
+            rbRetail.IsChecked = true;
+            _vm.Quantity = 1;
+            _vm.Paid = 0m;
+            _vm.UnitPrice = 0m;
         }
     }
 }
