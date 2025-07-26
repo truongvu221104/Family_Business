@@ -53,6 +53,8 @@
                 SelectionChanged="CbProduct_SelectionChanged"/>
             <TextBlock Text="Đơn vị:" VerticalAlignment="Center" Margin="15,0,0,0"/>
             <TextBlock x:Name="lblUnitName" Width="80" VerticalAlignment="Center"/>
+            <TextBlock Text="SL còn:" VerticalAlignment="Center" Margin="15,0,0,0"/>
+            <TextBlock x:Name="lblInventory" Width="60" Foreground="DarkGreen" FontWeight="Bold" VerticalAlignment="Center"/>
         </StackPanel>
 
         <!-- 3) Loại bán -->
@@ -77,9 +79,10 @@
 
         <!-- 5) Khách trả & Trạng thái -->
         <StackPanel Orientation="Horizontal" Grid.Row="5" Margin="0,0,0,10">
-            <TextBlock Text="Khách trả:" VerticalAlignment="Center"/>
             <TextBox x:Name="tbPaid" Width="120" Margin="5,0"
-               Text="{Binding Paid, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=N2}"/>
+   Text="{Binding Paid, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=N2}"/>
+            <Button Content="Thanh toán đủ" Margin="5,0,0,0" Width="100" Click="BtnPayFull_Click"/>
+
 
             <TextBlock Text="Trạng thái:" VerticalAlignment="Center" Margin="15,0,5,0"/>
             <TextBlock Width="200" FontWeight="Bold"

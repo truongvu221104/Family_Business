@@ -44,7 +44,8 @@
             <TextBox x:Name="tbOwed" Width="120" Margin="5,0" IsReadOnly="True"/>
 
             <TextBlock Text="Nhập số tiền trả:" Margin="20,0,0,0" VerticalAlignment="Center"/>
-            <TextBox x:Name="tbPayment" Width="120" Margin="5,0"/>
+            <TextBox x:Name="tbPayment" Width="120" Margin="5,0"
+                     PreviewTextInput="tbPayment_PreviewTextInput"/>
 
             <Button x:Name="btnPay" Content="Trả nợ" Width="100" Margin="20,0,0,0" Click="BtnPay_Click"/>
         </StackPanel>

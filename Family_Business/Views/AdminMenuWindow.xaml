@@ -1,0 +1,25 @@
+﻿<Window x:Class="Family_Business.Views.AdminMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Menu Quản trị (Admin)" Height="600" Width="400"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,20,28,20" VerticalAlignment="Top">
+            <TextBlock Text="MENU QUẢN TRỊ" FontSize="24" FontWeight="Bold" 
+                       Margin="0,0,0,28" TextAlignment="Center" />
+            <Button Content="Tạo và Quản lý hóa đơn bán hàng" Height="42" Margin="0,0,0,12" Click="BtnNewInvoice_Click"/>
+            <Button Content="Tạo và Quản lý hóa đơn mua hàng" Height="42" Margin="0,0,0,12" Click="BtnNewPurchaseInvoice_Click"/>
+            <Button Content="Quản lý khách hàng" Height="42" Margin="0,0,0,12" Click="BtnCustomer_Click"/>
+            <Button Content="Quản lý nhà cung cấp" Height="42" Margin="0,0,0,12" Click="BtnSupplier_Click"/>
+            <Button Content="Quản lý sản phẩm" Height="42" Margin="0,0,0,12" Click="BtnProduct_Click"/>
+            <Button Content="Quản lý danh mục sản phẩm" Height="42" Margin="0,0,0,12" Click="BtnProductCategory_Click"/>
+            <Button Content="Quản lý đơn vị tính" Height="42" Margin="0,0,0,12" Click="BtnUnit_Click"/>
+            <Button Content="Quản lý tồn kho và nhập/xuất kho" Height="42" Margin="0,0,0,12" Click="BtnInventory_Click"/>
+            <Button Content="Xem lịch sử giao dịch" Height="42" Margin="0,0,0,12" Click="BtnTransactionHistory_Click"/>
+            <Button Content="Xem tổng nợ khách hàng" Height="42" Margin="0,0,0,12" Click="BtnDebtOverview_Click"/>
+            <Button Content="Xem tổng nợ nhà cung cấp" Height="42" Margin="0,0,0,20" Click="BtnSupplierDebtOverview_Click"/>
+            <Button Content="Đăng xuất" Height="36" Click="BtnLogout_Click"/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

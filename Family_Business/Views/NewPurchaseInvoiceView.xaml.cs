@@ -88,37 +88,79 @@ namespace Family_Business.Views
         // Xử lý Lưu Phiếu nhập
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
-            // Validate NCC
+            // 1. Validate nhà cung cấp
             if (!(cbSupplier.SelectedItem is Supplier sup))
             {
-                MessageBox.Show("Chọn nhà cung cấp.", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            // Validate SP
-            if (!(cbProduct.SelectedItem is Product prod))
-            {
-                MessageBox.Show("Chọn sản phẩm.", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Vui lòng chọn nhà cung cấp.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
+            // 2. Validate sản phẩm
+            if (!(cbProduct.SelectedItem is Product prod))
+            {
+                MessageBox.Show("Vui lòng chọn sản phẩm.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 3. Validate số lượng (chỉ nhận số nguyên dương)
+            if (_vm.Quantity <= 0 || _vm.Quantity != Math.Round((double)_vm.Quantity, 0))
+            {
+                MessageBox.Show("Số lượng phải là số nguyên dương.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 4. Validate giá nhập (phải > 0)
+            if (_vm.UnitCost <= 0)
+            {
+                MessageBox.Show("Giá nhập phải lớn hơn 0.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 5. Lấy giá trị nhập
             var qty = _vm.Quantity;
             var cost = _vm.UnitCost;
             var paid = _vm.Paid;
             var total = _vm.Total;
             var now = DateTime.Now;
-            int currentUserId = 1; // hoặc lấy từ session
+            int currentUserId = 1; // Hoặc lấy từ context đăng nhập
 
+            // 6. Validate tiền thanh toán
+            if (paid < 0)
+            {
+                MessageBox.Show("Số tiền thanh toán không được âm.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (paid > total)
+            {
+                MessageBox.Show("Số tiền thanh toán không được lớn hơn thành tiền.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 7. Nếu là công nợ thì validate ngày đáo hạn
+            if (_vm.IsDebt)
+            {
+                if (!_vm.DueDate.HasValue)
+                {
+                    MessageBox.Show("Vui lòng nhập ngày đáo hạn khi công nợ.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                if (_vm.DueDate.Value.Date <= _vm.InvoiceDateTime.Date)
+                {
+                    MessageBox.Show("Ngày đáo hạn phải lớn hơn ngày nhập hàng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+
+            // 8. Ghi dữ liệu vào DB (bắt đầu transaction)
             using var tx = _ctx.Database.BeginTransaction();
             try
             {
-                // 1) Thêm giao dịch kho (Purchase)
+                // a) Thêm giao dịch kho (Purchase)
                 var invTx = new InventoryTransaction
                 {
                     ProductId = prod.ProductId,
                     UnitId = prod.BaseUnitId,
-                    Quantity = qty,             // nhập dương
+                    Quantity = qty,
                     TxType = "Purchase",
                     PartyId = sup.SupplierId,
                     PartyType = "Supplier",
@@ -127,7 +169,7 @@ namespace Family_Business.Views
                 };
                 _ctx.InventoryTransactions.Add(invTx);
 
-                // 2) Nếu có Thanh toán, thêm vào bảng Payment
+                // b) Thêm thanh toán (nếu có)
                 if (paid > 0)
                 {
                     _ctx.Payments.Add(new Payment
@@ -141,18 +183,20 @@ namespace Family_Business.Views
                     });
                 }
 
-                // 3) Ghi AuditLog
+                // c) Ghi AuditLog
                 _ctx.AuditLogs.Add(new AuditLog
                 {
                     UserId = currentUserId,
                     Action = "Create Purchase",
                     TableName = "InventoryTransaction",
-                    RecordId = invTx.TxId,
+                    RecordId = invTx.TxId, // Lưu ý: sẽ có giá trị đúng sau SaveChanges
                     ActionTime = now,
                     Detail = $"Total={total:N2}; Paid={paid:N2}"
                 });
 
                 _ctx.SaveChanges();
+
+                // d) Cập nhật OutstandingPayable của NCC sau khi SaveChanges
                 var supplierId = sup.SupplierId;
                 var totalPurchase = _ctx.InventoryTransactions
                     .Where(tx => tx.PartyType == "Supplier" && tx.PartyId == supplierId && tx.TxType == "Purchase")
@@ -164,23 +208,24 @@ namespace Family_Business.Views
 
                 var newOutstanding = totalPurchase - totalPaid;
 
-                // Cập nhật cột OutstandingPayable
                 var supplier = _ctx.Suppliers.Find(supplierId);
                 supplier!.OutstandingPayable = newOutstanding;
                 _ctx.SaveChanges();
+
                 tx.Commit();
 
-                MessageBox.Show($"Phiếu nhập đã lưu.\nTrạng thái: {_vm.Status}",
+                MessageBox.Show($"Phiếu nhập đã lưu thành công!\nTrạng thái: {_vm.Status}",
                                 "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+
                 ResetForm();
             }
             catch (Exception ex)
             {
                 tx.Rollback();
-                MessageBox.Show($"Lỗi khi lưu: {ex.Message}", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Lỗi khi lưu phiếu nhập: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e) => ResetForm();
 

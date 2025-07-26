@@ -29,11 +29,25 @@
 
         <!-- 1) Bảng khách còn nợ -->
         <DataGrid x:Name="dgDebtors"
-                  Grid.Row="1"
-                  AutoGenerateColumns="False"
-                  SelectionMode="Single"
-                  SelectionChanged="DgDebtors_SelectionChanged"
-                  IsReadOnly="True">
+          Grid.Row="1"
+          AutoGenerateColumns="False"
+          SelectionMode="Single"
+          SelectionChanged="DgDebtors_SelectionChanged"
+          IsReadOnly="True">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                            <Setter Property="Background" Value="Salmon"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsHighlight}" Value="True">
+                            <Setter Property="Background" Value="LightGoldenrodYellow"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Khách hàng" Binding="{Binding Name}" Width="200"/>
                 <DataGridTextColumn Header="Điện thoại" Binding="{Binding PhoneNumber}" Width="150"/>

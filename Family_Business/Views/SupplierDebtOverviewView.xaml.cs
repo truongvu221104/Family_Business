@@ -83,19 +83,40 @@ namespace Family_Business.Views
 
         private void BtnPay_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedSup == null ||
-                !decimal.TryParse(tbPayment.Text, out var paid) || paid <= 0)
+            // 1. Validate nhà cung cấp đã chọn
+            if (_selectedSup == null)
             {
-                MessageBox.Show("Chọn nhà cung cấp và nhập số tiền > 0.", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Vui lòng chọn nhà cung cấp.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            // Lưu supplierId trước khi reload
+            // 2. Validate nhập số tiền
+            if (!decimal.TryParse(tbPayment.Text, out var paid))
+            {
+                MessageBox.Show("Vui lòng nhập số tiền hợp lệ.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                tbPayment.Focus();
+                return;
+            }
+
+            if (paid <= 0)
+            {
+                MessageBox.Show("Số tiền trả phải lớn hơn 0.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                tbPayment.Focus();
+                return;
+            }
+
+            // 3. Không cho trả quá số nợ
+            if (paid > _selectedSup.OutstandingPayable)
+            {
+                MessageBox.Show($"Số tiền trả vượt quá số nợ hiện tại ({_selectedSup.OutstandingPayable:N2}).", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                tbPayment.Focus();
+                return;
+            }
+
+            // 4. Thực hiện thanh toán
             var supplierId = _selectedSup.SupplierId;
             var now = DateTime.Now;
 
-            // 1) Ghi Payment
             var payment = new Payment
             {
                 SupplierId = supplierId,
@@ -106,11 +127,12 @@ namespace Family_Business.Views
             };
             _ctx.Payments.Add(payment);
 
-            // 2) Cập nhật OutstandingPayable
-            _selectedSup.OutstandingPayable = Math.Max(0, _selectedSup.OutstandingPayable - paid);
+            _selectedSup.OutstandingPayable -= paid;
+            if (_selectedSup.OutstandingPayable < 0)
+                _selectedSup.OutstandingPayable = 0;
+
             _ctx.SaveChanges();
 
-            // 3) Ghi AuditLog
             _ctx.AuditLogs.Add(new AuditLog
             {
                 UserId = 1,
@@ -122,17 +144,20 @@ namespace Family_Business.Views
             });
             _ctx.SaveChanges();
 
-            // 4) Hiển thị kết quả
             tbOwed.Text = _selectedSup.OutstandingPayable.ToString("N2");
-            MessageBox.Show($"Đã trả {paid:N2}. Còn nợ: {_selectedSup.OutstandingPayable:N2}",
-                            "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Đã trả {paid:N2}. Còn nợ: {_selectedSup.OutstandingPayable:N2}", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
 
-            // 5) Reload và giữ selection
             LoadSuppliersDebt();
             tbPayment.Clear();
             var toSel = _suppliers.FirstOrDefault(s => s.SupplierID == supplierId);
             if (toSel != null)
                 dgSuppliers.SelectedItem = toSel;
         }
+        private void tbPayment_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        {
+            e.Handled = !decimal.TryParse(((TextBox)sender).Text + e.Text, out _);
+        }
+
     }
+
 }

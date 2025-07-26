@@ -46,6 +46,14 @@ namespace Family_Business.Views
 
         private void LoadTransactions()
         {
+            // Validate ngày lọc trước
+            if (dpFrom.SelectedDate.HasValue && dpTo.SelectedDate.HasValue &&
+                dpFrom.SelectedDate > dpTo.SelectedDate)
+            {
+                MessageBox.Show("Ngày bắt đầu không được lớn hơn ngày kết thúc.", "Lỗi lọc", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             // Chuẩn bị query
             var q = _ctx.InventoryTransactions
                         .Include(t => t.Product)
@@ -65,7 +73,7 @@ namespace Family_Business.Views
             if (dpFrom.SelectedDate.HasValue)
                 q = q.Where(t => t.TxDate >= dpFrom.SelectedDate.Value);
             if (dpTo.SelectedDate.HasValue)
-                q = q.Where(t => t.TxDate <= dpTo.SelectedDate.Value.AddDays(1));
+                q = q.Where(t => t.TxDate < dpTo.SelectedDate.Value.AddDays(1));
 
             // Đổ về list để bind
             var list = q.OrderByDescending(t => t.TxDate)

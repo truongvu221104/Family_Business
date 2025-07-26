@@ -1,0 +1,60 @@
+﻿<UserControl x:Class="Family_Business.Views.TransactionHistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="500" d:DesignWidth="950">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Panel tổng hợp -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Grid.Row="0">
+            <TextBlock Text="Tổng bán hàng:" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock x:Name="lblTotalBanHang" Margin="5,0,15,0" Foreground="Blue"/>
+            <TextBlock Text="Tổng thu:" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock x:Name="lblTotalThu" Margin="5,0,15,0" Foreground="DarkGreen"/>
+            <TextBlock Text="Tổng chi:" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock x:Name="lblTotalChi" Margin="5,0,0,0" Foreground="DarkRed"/>
+        </StackPanel>
+
+        <!-- Panel filter -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Grid.Row="1">
+            <TextBlock Text="Từ ngày:" VerticalAlignment="Center"/>
+            <DatePicker x:Name="dpFrom" Width="120" Margin="5,0" SelectedDateChanged="DateFilter_Changed"/>
+            <TextBlock Text="Đến ngày:" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <DatePicker x:Name="dpTo" Width="120" Margin="5,0" SelectedDateChanged="DateFilter_Changed"/>
+            <TextBlock Text="Tháng:" Margin="15,0,0,0" VerticalAlignment="Center"/>
+            <ComboBox x:Name="cbMonth" Width="70" Margin="5,0" SelectionChanged="DateFilter_Changed"/>
+            <TextBlock Text="Năm:" Margin="10,0,0,0" VerticalAlignment="Center"/>
+            <ComboBox x:Name="cbYear" Width="80" Margin="5,0" SelectionChanged="DateFilter_Changed"/>
+            <TextBlock Text="Tìm kiếm KH/NCC:" Margin="15,0,0,0" VerticalAlignment="Center"/>
+            <TextBox x:Name="tbSearch" Width="140" Margin="5,0" TextChanged="TbSearch_TextChanged"/>
+            <TextBlock Text="Loại giao dịch:" Margin="15,0,0,0" VerticalAlignment="Center"/>
+            <ComboBox x:Name="cbTypeFilter" Width="120" Margin="5,0" SelectionChanged="CbTypeFilter_SelectionChanged">
+                <ComboBoxItem Content="Tất cả"/>
+                <ComboBoxItem Content="Bán hàng"/>
+                <ComboBoxItem Content="Thanh toán"/>
+                <ComboBoxItem Content="Nhập hàng"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- DataGrid -->
+        <DataGrid x:Name="dgTransactions" Grid.Row="2" AutoGenerateColumns="False"
+              IsReadOnly="True" CanUserAddRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Loại GD" Binding="{Binding TransactionType}" Width="110"/>
+                <DataGridTextColumn Header="Ngày" Binding="{Binding Date, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
+                <DataGridTextColumn Header="KH/NCC" Binding="{Binding PartyName}" Width="170"/>
+                <DataGridTextColumn Header="Chi tiết" Binding="{Binding ProductDetail}" Width="*"/>
+                <DataGridTextColumn Header="Tổng tiền" Binding="{Binding Amount, StringFormat=N2}" Width="120"/>
+                <DataGridTextColumn Header="Ghi chú" Binding="{Binding Note}" Width="160"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+
+</UserControl>

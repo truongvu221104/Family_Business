@@ -41,10 +41,10 @@ namespace Family_Business.Views
             {
                 MessageBox.Show("Tên đăng nhập không tồn tại.", "Lỗi đăng nhập", MessageBoxButton.OK, MessageBoxImage.Error);
                 txtUser.Focus();
-                return;      // ← cực kỳ quan trọng: buộc thoát luôn không chạy phần dưới
+                return;
             }
 
-            // 4. Kiểm độ dài mật khẩu (hoặc bạn có thể bỏ nếu không cần)
+            // 4. Kiểm độ dài mật khẩu (tuỳ bạn)
             if (pwd.Length < 6)
             {
                 MessageBox.Show("Mật khẩu phải có ít nhất 6 ký tự.", "Không hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -63,10 +63,25 @@ namespace Family_Business.Views
                 return;
             }
 
-            // 6. Thành công
+            // 6. Thành công và phân quyền menu
             Session.Set(user);
-            new MainWindow().Show();
-            Close();
+
+            if (user.Role == "Admin")
+            {
+                var adminMenu = new AdminMenuWindow();
+                adminMenu.Show();
+            }
+            else if (user.Role == "Staff" || user.Role == "Employee")
+            {
+                var staffMenu = new StaffMenuWindow();
+                staffMenu.Show();
+            }
+            else
+            {
+                MessageBox.Show("Bạn không có quyền truy cập hệ thống này.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            this.Close();
         }
     }
 }

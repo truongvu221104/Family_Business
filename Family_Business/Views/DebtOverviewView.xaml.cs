@@ -17,7 +17,10 @@ namespace Family_Business.Views
         public decimal Balance { get; set; }
         public DateTime? NextDueDate { get; set; }
         public int? NextDueInvoiceId { get; set; }
-    }
+        public bool IsHighlight { get; set; } // mới thêm
+        public bool IsOverdue { get; set; } // thêm mới
+    
+}
 
     public partial class DebtOverviewView : UserControl
     {
@@ -29,53 +32,93 @@ namespace Family_Business.Views
         public DebtOverviewView()
         {
             InitializeComponent();
+            dpFilterDueDate.DisplayDateStart = DateTime.Today.AddDays(1);
             LoadDebtors();
         }
-
         private void LoadDebtors()
         {
             var query = _ctx.Customers.AsQueryable();
-            // chỉ khách còn nợ
             query = query.Where(c => c.Balance > 0);
 
-            // lọc theo tên hoặc số điện thoại
             var key = txtFilterNameOrPhone.Text.Trim();
             if (!string.IsNullOrWhiteSpace(key))
             {
-                query = query.Where(c => c.Name.Contains(key) || c.PhoneNumber.Contains(key));
+                key = key.Replace(" ", "").ToLower();
+                query = query.Where(c =>
+                    (c.Name != null && c.Name.ToLower().Contains(key)) ||
+                    (c.PhoneNumber != null && c.PhoneNumber.Replace(" ", "").Contains(key))
+                );
             }
 
-            // lấy danh sách
-            var list = query
+            // 1. Lấy danh sách khách nợ cơ bản
+            var customers = query
                 .Select(c => new DebtorInfo
                 {
                     CustomerID = c.CustomerID,
                     Name = c.Name,
                     PhoneNumber = c.PhoneNumber,
                     Address = c.Address,
-                    Balance = c.Balance,
-                    NextDueDate = _ctx.Invoices
-                                          .Where(i => i.CustomerId == c.CustomerID && i.DueDate != null)
-                                          .OrderBy(i => i.DueDate)
-                                          .Select(i => i.DueDate)
-                                          .FirstOrDefault(),
-                    NextDueInvoiceId = _ctx.Invoices
-                                          .Where(i => i.CustomerId == c.CustomerID && i.DueDate != null)
-                                          .OrderBy(i => i.DueDate)
-                                          .Select(i => i.InvoiceId)
-                                          .FirstOrDefault()
+                    Balance = c.Balance
                 })
                 .ToList();
 
-            // tiếp tục lọc theo ngày đáo hạn
-            if (dpFilterDueDate.SelectedDate is DateTime d)
+            // 2. Lấy hóa đơn gần nhất có DueDate cho từng khách
+            foreach (var cust in customers)
             {
-                list = list.Where(x => x.NextDueDate >= d).ToList();
+                var nextInvoice = _ctx.Invoices
+                    .Where(i => i.CustomerId == cust.CustomerID && i.DueDate != null)
+                    .OrderBy(i => i.DueDate)
+                    .FirstOrDefault();
+
+                cust.NextDueDate = nextInvoice?.DueDate;
+                cust.NextDueInvoiceId = nextInvoice?.InvoiceId;
             }
 
-            _debtors = list;
+            // 3. Nếu có chọn ngày đáo hạn, chỉ lọc khách có ngày đáo hạn trước ngày đó
+            DateTime? filterDate = dpFilterDueDate.SelectedDate;
+            DateTime baseDate = filterDate ?? DateTime.Today;
+            if (filterDate.HasValue)
+            {
+                customers = customers
+                    .Where(x => x.NextDueDate != null && x.NextDueDate < baseDate)
+                    .ToList();
+            }
+
+            // 4. Đánh dấu highlight và overdue cho mọi trường hợp (luôn chạy, không phụ thuộc filter)
+            DateTime startHighlight = baseDate.AddDays(-7);
+            foreach (var item in customers)
+            {
+                item.IsHighlight = false;
+                item.IsOverdue = false;
+                if (item.NextDueDate.HasValue)
+                {
+                    if (item.NextDueDate.Value < baseDate)
+                    {
+                        if (item.NextDueDate.Value < baseDate.AddDays(-1))
+                            item.IsOverdue = true; // đỏ
+                        else
+                            item.IsHighlight = true; // vàng
+                    }
+                    else if (item.NextDueDate.Value >= startHighlight && item.NextDueDate.Value < baseDate)
+                    {
+                        item.IsHighlight = true; // vàng
+                    }
+                }
+            }
+
+            // 5. Sắp xếp khách gần đến hạn nhất lên đầu
+            customers = customers.OrderBy(x => x.NextDueDate ?? DateTime.MaxValue).ToList();
+
+            _debtors = customers;
             dgDebtors.ItemsSource = _debtors;
         }
+
+
+
+
+
+
+
 
         private void Filter_Changed(object sender, EventArgs e)
         {
@@ -157,8 +200,21 @@ namespace Family_Business.Views
             // Reload giữ selection
             LoadDebtors();
             tbPayment.Clear();
-            var toSelect = _debtors.FirstOrDefault(d => d.CustomerID == _selectedCust.CustomerID);
-            if (toSelect != null) dgDebtors.SelectedItem = toSelect;
+
+            if (_selectedCust != null)
+            {
+                var toSelect = _debtors.FirstOrDefault(d => d.CustomerID == _selectedCust.CustomerID);
+                if (toSelect != null)
+                    dgDebtors.SelectedItem = toSelect;
+                else
+                {
+                    // Không còn trong danh sách => clear selection
+                    dgDebtors.SelectedItem = null;
+                    _selectedCust = null;
+                    _selectedInvoiceId = null;
+                    tbOwed.Clear();
+                }
+            }
         }
     }
 }

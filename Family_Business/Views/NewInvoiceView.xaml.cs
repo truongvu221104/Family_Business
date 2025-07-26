@@ -40,7 +40,6 @@ namespace Family_Business.Views
             // 4) Mặc định Quantity & Paid, rồi tính giá lẻ
             _vm.Quantity = 1;
             _vm.Paid = 0m;
-            // (UnitPrice sẽ được tính ngay khi chọn SP hoặc đổi loại bán)
         }
 
         // Filter Khách
@@ -49,8 +48,12 @@ namespace Family_Business.Views
             if (string.IsNullOrWhiteSpace(txtCustomerFilter.Text))
                 e.Accepted = true;
             else if (e.Item is Customer c)
-                e.Accepted = c.Name
-                    .IndexOf(txtCustomerFilter.Text, StringComparison.OrdinalIgnoreCase) >= 0;
+            {
+                var key = txtCustomerFilter.Text.Trim().ToLower().Replace(" ", "");
+                var name = c.Name?.ToLower() ?? "";
+                var phone = (c.PhoneNumber ?? "").Replace(" ", "");
+                e.Accepted = name.Contains(key) || phone.Contains(key);
+            }
             else
                 e.Accepted = false;
         }
@@ -63,25 +66,33 @@ namespace Family_Business.Views
             if (string.IsNullOrWhiteSpace(txtProductFilter.Text))
                 e.Accepted = true;
             else if (e.Item is Product p)
-                e.Accepted = p.Name
-                    .IndexOf(txtProductFilter.Text, StringComparison.OrdinalIgnoreCase) >= 0;
+                e.Accepted = p.Name.IndexOf(txtProductFilter.Text, StringComparison.OrdinalIgnoreCase) >= 0;
             else
                 e.Accepted = false;
         }
         private void TxtProductFilter_TextChanged(object sender, TextChangedEventArgs e)
             => _productView.View.Refresh();
 
-        // Khi chọn SP: hiện Đơn vị và tính lại Đơn giá
+        // Khi chọn SP: hiện Đơn vị và tính lại Đơn giá, đồng thời hiển thị tồn kho
         private void CbProduct_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (cbProduct.SelectedItem is Product prod)
             {
                 lblUnitName.Text = prod.BaseUnit.UnitName;
                 RecalculateUnitPrice(prod);
+
+                // Tính tồn kho và hiển thị
+                var inventory = _ctx.InventoryTransactions
+                    .Where(tx => tx.ProductId == prod.ProductId)
+                    .Sum(tx => tx.TxType == "Purchase" ? tx.Quantity
+                            : (tx.TxType == "Sale" || tx.TxType == "OUT") ? -tx.Quantity
+                            : 0);
+                lblInventory.Text = inventory.ToString("0.##");
             }
             else
             {
                 lblUnitName.Text = "";
+                lblInventory.Text = "";
                 _vm.UnitPrice = 0m;
             }
         }
@@ -96,13 +107,18 @@ namespace Family_Business.Views
         // Tính và gán Giá theo loại bán
         private void RecalculateUnitPrice(Product prod)
         {
-            // Lấy giá gốc + markup
             var cost = prod.CostPerUnit;
             var pct = (rbWholesale.IsChecked == true)
                          ? prod.WholesaleMarkupPercent
                          : prod.RetailMarkupPercent;
-
             _vm.UnitPrice = cost * (1 + pct / 100m);
+        }
+
+        // Nút "Thanh toán đủ"
+        private void BtnPayFull_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.Paid = _vm.Total;
+            tbPaid.Text = _vm.Total.ToString("N2");
         }
 
         // Lưu hóa đơn + chi tiết
@@ -111,15 +127,13 @@ namespace Family_Business.Views
             // 1) Validate khách hàng
             if (!(cbCustomer.SelectedItem is Customer cust))
             {
-                MessageBox.Show("Chọn khách hàng.", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Chọn khách hàng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             // 2) Validate sản phẩm
             if (!(cbProduct.SelectedItem is Product prod))
             {
-                MessageBox.Show("Chọn sản phẩm.", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Chọn sản phẩm.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -127,25 +141,67 @@ namespace Family_Business.Views
             var qty = _vm.Quantity;
             var unitPrice = _vm.UnitPrice;
             var paid = _vm.Paid;
-            var total = _vm.Total;               // = qty * unitPrice
+            var total = _vm.Total;
             var now = DateTime.Now;
-            int currentUserId = 1; // hoặc từ session
+            int currentUserId = 1;
+
+            // 4) Kiểm tra số lượng bán là số nguyên dương
+            if (qty <= 0 || qty % 1 != 0)
+            {
+                MessageBox.Show("Số lượng phải là số nguyên dương.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 5) Kiểm tra tồn kho
+            var inventory = _ctx.InventoryTransactions
+                .Where(tx => tx.ProductId == prod.ProductId)
+                .Sum(tx => tx.TxType == "Purchase" ? tx.Quantity
+                        : (tx.TxType == "Sale" || tx.TxType == "OUT") ? -tx.Quantity
+                        : 0);
+
+            if (qty > inventory)
+            {
+                MessageBox.Show($"Số lượng tồn kho hiện tại chỉ còn {inventory:0.##}. Không đủ số lượng để bán!", "Lỗi tồn kho", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 6) Kiểm tra số tiền khách trả
+            if (paid > total)
+            {
+                MessageBox.Show("Số tiền khách trả không được lớn hơn thành tiền!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 7) Nếu khách còn nợ thì phải chọn ngày đáo hạn hợp lệ
+            if (paid < total)
+            {
+                if (!_vm.DueDate.HasValue)
+                {
+                    MessageBox.Show("Khách nợ, vui lòng chọn ngày đáo hạn.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                if (_vm.DueDate.Value.Date <= _vm.InvoiceDateTime.Date)
+                {
+                    MessageBox.Show("Ngày đáo hạn phải lớn hơn ngày lập hóa đơn.", "Lỗi ngày đáo hạn", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
 
             using var tx = _ctx.Database.BeginTransaction();
             try
             {
-                // 4) Tạo hóa đơn
+                // 8) Tạo hóa đơn
                 var inv = new Invoice
                 {
                     CustomerId = cust.CustomerID,
                     InvoiceDate = _vm.InvoiceDateTime,
-                    DueDate = _vm.IsDebt ? _vm.DueDate : null,
+                    DueDate = (paid < total) ? _vm.DueDate : null,
                     CreatedBy = currentUserId
                 };
                 _ctx.Invoices.Add(inv);
-                _ctx.SaveChanges(); // để có InvoiceID
+                _ctx.SaveChanges();
 
-                // 5) Thêm detail
+                // 9) Thêm chi tiết hóa đơn
                 _ctx.InvoiceDetails.Add(new InvoiceDetail
                 {
                     InvoiceId = inv.InvoiceId,
@@ -155,7 +211,21 @@ namespace Family_Business.Views
                     UnitPrice = unitPrice
                 });
 
-                // 6) Thêm payment nếu có
+                // 10) Ghi giao dịch xuất kho
+                _ctx.InventoryTransactions.Add(new InventoryTransaction
+                {
+                    ProductId = prod.ProductId,
+                    UnitId = prod.BaseUnitId,
+                    Quantity = qty,
+                    TxType = "Sale",
+                    PartyId = cust.CustomerID,
+                    PartyType = "Customer",
+                    ReferenceId = inv.InvoiceId,
+                    TxDate = _vm.InvoiceDateTime,
+                    Note = "Xuất kho bán hàng"
+                });
+
+                // 11) Thêm payment nếu có
                 if (paid > 0)
                 {
                     _ctx.Payments.Add(new Payment
@@ -168,7 +238,7 @@ namespace Family_Business.Views
                     });
                 }
 
-                // 7) Ghi log
+                // 12) Ghi log
                 _ctx.AuditLogs.Add(new AuditLog
                 {
                     UserId = currentUserId,
@@ -181,10 +251,12 @@ namespace Family_Business.Views
 
                 _ctx.SaveChanges();
 
-                // 8) Tính số còn nợ của chính hóa đơn này
+                // 13) Tính số còn nợ của chính hóa đơn này
                 decimal outstandingThisInvoice = total - paid;
+                // Đảm bảo không có nợ âm cho hóa đơn này
+                if (outstandingThisInvoice < 0) outstandingThisInvoice = 0;
 
-                // 9) Cộng dồn vào Balance cũ rồi lưu
+                // 14) Cộng dồn vào Balance cũ rồi lưu
                 cust.Balance += outstandingThisInvoice;
                 _ctx.SaveChanges();
 
@@ -196,15 +268,23 @@ namespace Family_Business.Views
                     "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 ResetForm();
+
+                // Sau khi bán xong, nếu đang chọn sản phẩm thì cập nhật lại số tồn kho hiển thị
+                if (cbProduct.SelectedItem != null)
+                    CbProduct_SelectionChanged(null, null);
             }
             catch (Exception ex)
             {
                 tx.Rollback();
-                MessageBox.Show($"Lỗi khi lưu hóa đơn: {ex.Message}", "Lỗi",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Lỗi khi lưu hóa đơn: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
+        // Nút Hủy và reset form
+        private void BtnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            ResetForm();
+        }
 
         // Tách riêng phần reset để gọn
         private void ResetForm()
@@ -214,27 +294,13 @@ namespace Family_Business.Views
             txtProductFilter.Clear();
             cbProduct.SelectedIndex = -1;
             lblUnitName.Text = "";
+            lblInventory.Text = "";
             rbRetail.IsChecked = true;
             _vm.Quantity = 1;
             _vm.Paid = 0m;
             _vm.DueDate = null;
             _vm.UnitPrice = 0m;
             // InvoiceDateTime giữ mặc định lần mở form; nếu cần reset, có thể gán lại DateTime.Now
-        }
-
-
-
-
-        private void BtnCancel_Click(object sender, RoutedEventArgs e)
-        {
-            // Reset giống BtnSave_Click (chỉ khác không lưu)
-            txtCustomerFilter.Clear(); cbCustomer.SelectedIndex = -1;
-            txtProductFilter.Clear(); cbProduct.SelectedIndex = -1;
-            lblUnitName.Text = "";
-            rbRetail.IsChecked = true;
-            _vm.Quantity = 1;
-            _vm.Paid = 0m;
-            _vm.UnitPrice = 0m;
         }
     }
 }
